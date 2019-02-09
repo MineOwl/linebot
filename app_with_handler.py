@@ -28,8 +28,44 @@ from linebot.models import (
 )
 
 import app
+#######################
+#added by minegishi
+from urllib.request import urlopen
+from bs4 import BeautifulSoup
+import time
+import datetime
+import threading
 
-import add
+
+def get_tweet_num():
+    with open("acount.text","r") as f:
+        acount = f.read()
+    html = urlopen("https://twitter.com/{}?lang=ja".format(acount))
+    bsObj = BeautifulSoup(html,"lxml")
+    text = bsObj.find("span",{"class","ProfileNav-value"})
+    return text.attrs['data-count']
+
+
+def get_tweet_time():
+    with open("tweet_count.text","w") as f:
+        f.write("なし")
+    while True:
+        tweet_num = get_tweet_num()
+        time.sleep(10)
+        print("[Twitter]",tweet_num,get_tweet_num())
+        if tweet_num == get_tweet_num():
+            print('[Twitter] 変化なし')
+        else:
+            with open("tweet_count.text","a") as f:
+                now = str(datetime.datetime.now()) + "\n"
+                f.write(now)
+
+
+thread_1 = threading.Thread(target=get_tweet_time)
+thread_1.start()
+#################
+#################
+
 
 app = Flask(__name__)
 
@@ -69,11 +105,28 @@ def callback():
 @handler.add(MessageEvent, message=TextMessage)
 def message_text(event):
 
-    line_bot_api.reply_message(
-        event.reply_token,
-        TextSendMessage(text=add.get_tweet_num())
-        #TextSendMessage(text=event.message.text)
-    )
+
+    text = ""
+    with open("tweet_count.text","r") as f:
+        text = f.read()
+    
+    if "@" in event.message.text:
+        #uid(global) update
+        text=event.message.text
+        acount = text.replace("@","")
+        with open("acount.text","w") as f:
+            f.write(acount)
+
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=acount+" を追加しました。 ")
+        )
+
+    else:
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text = text )
+        )
 
 
 if __name__ == "__main__":
